@@ -13,60 +13,9 @@ describe('Router', function(){
     app = express();
   })
 
-  describe('.match(method, url, i)', function(){
-    it('should match based on index', function(){
-      router.route('get', '/foo', function(){});
-      router.route('get', '/foob?', function(){});
-      router.route('get', '/bar', function(){});
-
-      var method = 'GET';
-      var url = '/foo?bar=baz';
-
-      var route = router.match(method, url, 0);
-      route.constructor.name.should.equal('Route');
-      route.method.should.equal('get');
-      route.path.should.equal('/foo');
-
-      var route = router.match(method, url, 1);
-      route.path.should.equal('/foob?');
-
-      var route = router.match(method, url, 2);
-      assert(!route);
-
-      url = '/bar';
-      var route = router.match(method, url);
-      route.path.should.equal('/bar');
-    })
-  })
-  
-  describe('.matchRequest(req, i)', function(){
-    it('should match based on index', function(){
-      router.route('get', '/foo', function(){});
-      router.route('get', '/foob?', function(){});
-      router.route('get', '/bar', function(){});
-      var req = { method: 'GET', url: '/foo?bar=baz' };
-
-      var route = router.matchRequest(req, 0);
-      route.constructor.name.should.equal('Route');
-      route.method.should.equal('get');
-      route.path.should.equal('/foo');
-
-      var route = router.matchRequest(req, 1);
-      req._route_index.should.equal(1);
-      route.path.should.equal('/foob?');
-
-      var route = router.matchRequest(req, 2);
-      assert(!route);
-
-      req.url = '/bar';
-      var route = router.matchRequest(req);
-      route.path.should.equal('/bar');
-    })
-  })
-
   describe('.middleware', function(){
     it('should dispatch', function(done){
-      router.route('get', '/foo', function(req, res){
+      router.route('/foo').get(function(req, res){
         res.send('foo');
       });
 
@@ -81,41 +30,42 @@ describe('Router', function(){
   describe('.multiple callbacks', function(){
     it('should throw if a callback is null', function(){
       assert.throws(function () {
-        router.route('get', '/foo', null, function(){});
+        router.route('/foo').use(null);
       })
     })
 
     it('should throw if a callback is undefined', function(){
       assert.throws(function () {
-        router.route('get', '/foo', undefined, function(){});
+        router.route('/foo').use(undefined);
       })
     })
 
     it('should throw if a callback is not a function', function(){
       assert.throws(function () {
-        router.route('get', '/foo', 'not a function', function(){});
+        router.route('/foo').use('not a function');
       })
     })
 
     it('should not throw if all callbacks are functions', function(){
-      router.route('get', '/foo', function(){}, function(){});
+      router.route('/foo').use(function(){}).use(function(){});
     })
   })
 
   describe('.all', function() {
-    it('should support using .all to capture all http verbs', function() {
+    it('should support using .all to capture all http verbs', function(done) {
       var router = new Router();
 
-      router.all('/foo', function(){});
+      var count = 0;
+      router.all('/foo', function(){ count++; });
 
       var url = '/foo?bar=baz';
 
       methods.forEach(function testMethod(method) {
-        var route = router.match(method, url);
-        route.constructor.name.should.equal('Route');
-        route.method.should.equal(method);
-        route.path.should.equal('/foo');
+        router._dispatch({ url: url, method: method }, {}, function() {});
       });
+
+      assert.equal(count, methods.length);
+      done();
     })
   })
 })
